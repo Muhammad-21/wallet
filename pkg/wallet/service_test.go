@@ -35,3 +35,30 @@ func TestService_FindAccountByID_negative(t *testing.T)  {
 		}
 	}
 }
+
+func TestService_Reject_found(t *testing.T) {
+	svc := &Service{}
+	account,err := svc.RegisterAccount("+79888888888")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	account.Balance=100
+	payment, er := svc.Pay(account.ID, 10, "aa")
+	err = svc.Reject(payment.ID)
+	if err != nil {
+		fmt.Println(er)
+	}
+}
+
+
+func TestService_Reject_notfound(t *testing.T) {
+	svc := &Service{}
+	
+	err:= svc.Reject("1")
+	if err == nil {
+		t.Error(ErrPaymentNotFound)
+		return 
+	}
+
+}
