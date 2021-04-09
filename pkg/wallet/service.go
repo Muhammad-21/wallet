@@ -1,10 +1,10 @@
 package wallet
 
 import (
+	"errors"
+
 	"github.com/Muhammad-21/wallet/pkg/types"
 	"github.com/google/uuid"
-	"errors"
-	
 )
 
 
@@ -133,3 +133,24 @@ func (s *Service) FindPaymentByID(paymentID string) (*types.Payment, error) {
 	return nil, ErrPaymentNotFound
 }
 
+func (s *Service) Repeat(paymentID string) (*types.Payment, error)	{
+	payment, err :=s.FindPaymentByID(paymentID)
+	if err != nil {
+		return nil,err
+	}
+	new_paymentID := uuid.New().String()
+	new_payment := &types.Payment{
+		ID: 		new_paymentID,
+		AccountID: 	payment.AccountID,
+		Amount: 	payment.Amount,
+		Category: 	payment.Category,
+		Status: 	payment.Status,
+	}
+	account, account_err := s.FindAccountByID(new_payment.AccountID)
+	if account_err != nil {
+		return nil, account_err
+	}
+	account.Balance-=new_payment.Amount
+	s.payments = append(s.payments, new_payment)
+	return new_payment, nil
+}
