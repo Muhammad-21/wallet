@@ -1,11 +1,59 @@
 package wallet
 
 import (
+	"github.com/Muhammad-21/wallet/pkg/types"
 	"fmt"
 	"testing"
 )
 
+type testService struct {
+	*Service
+}
+	
+type testAccount struct {
+	phone types.Phone
+	balance types.Money
+	payments []struct {
+	amount types.Money
+	category types.PaymentCategory
+}
+}
+	
+var defaultTestAccount=testAccount {
+	phone: "+7999999999",
+	balance: 100,
+	payments: []struct{
+	amount types.Money
+	category types.PaymentCategory
+	}{{100, "auto"},
+	},
+}
+	
+func newTestService() *testService {
+	return &testService{Service: &Service{}}
+}
 
+func (s *testService) addAccount(data testAccount) (*types.Account, []*types.Payment, error) {
+	account, err := s.RegisterAccount(data.phone)
+	if err != nil {
+		return nil, nil, fmt.Errorf("can`t register account, erro = %v", err)
+	}
+	
+	err = s.Deposit(account.ID, data.balance)
+	if err != nil {
+		return nil, nil, fmt.Errorf("can`t deposit account, error = %v", err)
+	}
+	
+	payments := make([]*types.Payment, len(data.payments))
+	for i, payment := range data.payments {
+		payments[i], err = s.Pay(account.ID, payment.amount, payment.category)
+		if err != nil {
+			return nil, nil, fmt.Errorf("can`t make payment, error = %v", err)
+		}
+	}
+	
+	return account, payments, nil
+}
 func TestService_FindAccountByID_possitive(t *testing.T) {
 	svc := &Service{}
 	account,err := svc.RegisterAccount("+79888888888")
@@ -93,4 +141,53 @@ func TestService_Repeat_found(t *testing.T) {
 	if errrr != nil {
 		fmt.Println(errrr)
 	}
+}
+
+func TestService_FavoritePayment_ok(t *testing.T) {
+	s := newTestService()
+	_,payments,err:=s.addAccount(defaultTestAccount)
+	if err != nil {
+		t.Error(err)
+		return 
+	}
+	
+	payment:=payments[0]
+	_, err=s.FavoritePayment(payment.ID,"auto")
+	if err != nil {
+		fmt.Println(err)
+	return 
+	}
+}
+
+func TestService_PayFromFavorite_ok(t *testing.T) {
+	s := newTestService()
+	_,payments,err:=s.addAccount(defaultTestAccount)
+	if err != nil {
+		t.Error(err)
+	return 
+	}
+	
+	payment:=payments[0]
+	fv, err:=s.FavoritePayment(payment.ID,"auto")
+	if err != nil {
+		fmt.Println(err)
+	return 
+	}
+	
+	_,err=s.PayFromFavorite(fv.ID)
+	if err != nil {
+		fmt.Println()
+	return 
+	}
+	
+	savedAccount, err:=s.FindAccountByID(payment.AccountID)
+	if err != nil {
+		fmt.Println(err)
+	return
+	}
+	if savedAccount.Balance==defaultTestAccount.balance{
+		fmt.Println(savedAccount)
+	return
+	}
+	
 }
