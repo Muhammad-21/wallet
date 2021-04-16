@@ -2,6 +2,12 @@ package wallet
 
 import (
 	"errors"
+	"io"
+	"strings"
+
+	"log"
+	"os"
+	"strconv"
 
 	"github.com/Muhammad-21/wallet/pkg/types"
 	"github.com/google/uuid"
@@ -201,4 +207,80 @@ func (s *Service) Repeat(paymentID string) (*types.Payment, error)	{
 	account.Balance-=new_payment.Amount
 	s.payments = append(s.payments, new_payment)
 	return new_payment, nil
+}
+
+func(s *Service) ExportToFile(path string) error{
+	file, err := os.Create(path)
+	if err != nil {
+		log.Print(err)
+	}
+	defer func ()  {
+		err := file.Close()
+		if err != nil {
+			log.Print(err)
+			return
+		}
+	}()
+	result := ""
+	for _, account:= range s.accounts {
+		collect := strconv.FormatInt(account.ID, 10) + ";" + string(account.Phone) + ";" +strconv.FormatInt(int64(account.Balance),10) + "|"
+		result = result + collect
+	}
+	_, errr := file.Write([]byte(result))
+	if err != nil {
+		log.Print(errr)
+	}
+	return errr
+
+}
+
+func (s *Service) ImportFromFile(path string) error{
+	file,err := os.Open(path)
+	if err != nil{
+		log.Print(err)
+		return err
+	}
+	defer func(){
+		err := file.Close()
+		if err != nil {
+			log.Print(err)
+			return
+		}
+	} ()
+
+	content := make([]byte,0)
+	buf := make([]byte,4)
+	for {
+		read, err := file.Read(buf)
+		if err == io.EOF {
+			content = append(content, buf[:read]...)
+			break
+		}
+		if err != nil {
+			log.Print(err)
+			return err
+		}
+		content = append(content, buf[:read]...)
+	}
+	data := strings.Split(string(content), "|")
+	for _, accounts := range data {
+		if len(accounts)>1{
+		account := strings.Split(accounts, ";")
+		id, err := strconv.ParseInt(account[0],10,64)
+		if err != nil {
+			log.Print(err)
+		}
+		balance,err := strconv.ParseInt(account[2],10,64)
+		if err != nil {
+			log.Print(err)
+		}
+		accountt := &types.Account{
+			ID: id,
+			Phone: types.Phone(account[1]),
+			Balance: types.Money(balance),
+		}
+		s.accounts = append(s.accounts, accountt)
+	}
+}
+	return err
 }
