@@ -530,3 +530,66 @@ func (s *Service) Import(dir string) error {
 	}
 	return nil
 }
+
+func (s *Service) ExportAccountHistory(accountID int64) ([]types.Payment, error) {
+	var result []types.Payment
+	i:=1
+	for _, payment:= range s.payments{
+		if payment.AccountID == accountID {
+			result = append(result, *payment)
+			i++
+		}
+	}
+	if i==1{
+		return result, ErrAccountNotFound
+	} 
+	return result, nil
+}
+
+
+func (s *Service) HistoryToFiles(payments []types.Payment, dir string, records int) error {
+	result:= ""
+	if len(payments)> 0 && len(payments) <=records {
+		for _, payment:= range payments {
+			collect := string(payment.ID) + ";" + strconv.FormatInt(payment.AccountID, 10) + ";" +strconv.FormatInt(int64(payment.Amount),10) + ";" +string(payment.Category)+ ";" +string(payment.Status) + "\r\n"
+			result += collect
+		}
+		adres:=dir+"/payments.dump"
+		file, err := os.Create(adres)
+		if err != nil {
+			log.Print(err)
+		}
+		defer file.Close()
+		_, file_error := file.Write([]byte(result))
+		if file_error != nil {
+			log.Print(file_error)
+		}
+		return nil 
+	} else {
+	i:=1 //helps for count number files
+	j:=0 //helps for comparison with records 
+	for _, payment:= range payments {
+		collect := string(payment.ID) + ";" + strconv.FormatInt(payment.AccountID, 10) + ";" +strconv.FormatInt(int64(payment.Amount),10) + ";" +string(payment.Category)+ ";" +string(payment.Status) + "\r\n"
+		result += collect
+			if j==0{
+				adress:=dir+"/payments"+strconv.Itoa(i)+".dump" 
+				file, err := os.Create(adress)
+				if err != nil {
+					log.Print(err)
+				}
+				_, file_error := file.Write([]byte(result))
+				if file_error != nil {
+					log.Print(file_error)
+				}
+				file.Close()
+				}
+				j++
+			if j== records {
+				i++
+				j = 0
+				result=""
+			}
+	}
+	return nil
+}
+}
