@@ -3,6 +3,7 @@ package wallet
 import (
 	"errors"
 	"io"
+	// "io/ioutil"
 	"strings"
 
 	"log"
@@ -280,7 +281,252 @@ func (s *Service) ImportFromFile(path string) error{
 			Balance: types.Money(balance),
 		}
 		s.accounts = append(s.accounts, accountt)
+		}
 	}
-}
 	return err
+}
+
+func (s *Service) Export(dir string) error {
+	// err := os.Chdir(dir)
+	// if err !=nil{
+	// 	log.Print(err)
+	// 	return err
+	// }
+
+	result_accounts := ""
+	for _, account:= range s.accounts {
+		collect := strconv.FormatInt(account.ID, 10) + ";" + string(account.Phone) + ";" +strconv.FormatInt(int64(account.Balance),10) + "\r\n"
+		result_accounts += collect
+	}
+	if len(result_accounts) > 0 {
+		account_adress:=dir+"/accounts.dump"
+		accounts_file, err1 := os.Create(account_adress)
+		if err1 != nil {
+			log.Print(err1)
+		return err1
+		}
+		_, account_error := accounts_file.Write([]byte(result_accounts))
+		if account_error != nil {
+			log.Print(account_error)
+		}
+		defer func ()  {
+			err := accounts_file.Close()
+			if err != nil {
+				log.Print(err)
+				return
+			}
+		}()
+	}	
+
+	result_payments := ""
+	for _, payment:= range s.payments {
+		collect := string(payment.ID) + ";" + strconv.FormatInt(payment.AccountID, 10) + ";" +strconv.FormatInt(int64(payment.Amount),10) + ";" +string(payment.Category)+ ";" +string(payment.Status) + "\r\n"
+		result_payments += collect
+	}
+	if len(result_payments) > 0 {
+		payment_adress:=dir+"/payments.dump"
+		payments_file, err2 := os.Create(payment_adress)
+		if err2 != nil {
+			log.Print(err2)
+		return err2
+		}
+		_, payment_error := payments_file.Write([]byte(result_payments))
+		if payment_error != nil {
+			log.Print(payment_error)
+		}
+		defer func ()  {
+			err := payments_file.Close()
+			if err != nil {
+				log.Print(err)
+				return
+			}
+		}()
+	}
+
+	result_favorites := ""
+	for _, favorite:= range s.favorites {
+		collect := string(favorite.ID) + ";" + strconv.FormatInt(favorite.AccountID,10) + ";" + string(favorite.Name) + ";" +strconv.FormatInt(int64(favorite.Amount),10) + ";" + string(favorite.Category)+ "\r\n"
+		result_favorites += collect
+	}
+	if len(result_favorites) > 0 {
+		favorite_adress:=dir+"/favorites.dump"
+		favorite_file, err3 := os.Create(favorite_adress)
+		if err3 != nil {
+			log.Print(err3)
+		return err3
+		}
+		_, favorites_error := favorite_file.Write([]byte(result_favorites))
+		if favorites_error != nil {
+			log.Print(favorites_error)
+		}
+		defer func ()  {
+			err := favorite_file.Close()
+			if err != nil {
+				log.Print(err)
+				return
+			}
+		}()
+	}
+	return nil	
+}
+
+
+func (s *Service) Import(dir string) error {
+	// err := os.Chdir(dir)
+	// if err != nil {
+	// 	log.Print(err)
+	// 	return err
+	// }
+
+	//accounts
+	account_adress:=dir+"/accounts.dump"
+	file_accounts,err := os.Open(account_adress)
+	if err != nil{
+		log.Print(err)
+		return err
+	}
+	defer func(){
+		err := file_accounts.Close()
+		if err != nil {
+			log.Print(err)
+			return
+		}
+	} ()
+	content_accounts := make([]byte,0)
+	buf := make([]byte,4)
+	for {
+		read_accounts, err := file_accounts.Read(buf)
+		if err == io.EOF {
+			content_accounts = append(content_accounts, buf[:read_accounts]...)
+			break
+		}
+		if err != nil {
+			log.Print(err)
+			return err
+		}
+		content_accounts = append(content_accounts, buf[:read_accounts]...)
+	}
+	data := strings.Split(string(content_accounts), "\r\n")
+	for _, accounts := range data {
+		if len(accounts)>1{
+		account := strings.Split(accounts, ";")
+		id, err := strconv.ParseInt(account[0],10,64)
+		if err != nil {
+			log.Print(err)
+		}
+		balance,err := strconv.ParseInt(account[2],10,64)
+		if err != nil {
+			log.Print(err)
+		}
+		accountt := &types.Account{
+			ID: id,
+			Phone: types.Phone(account[1]),
+			Balance: types.Money(balance),
+		}
+		s.accounts = append(s.accounts, accountt)
+		}
+	}
+
+	//payments
+	payment_adress:=dir+"/payments.dump"
+	file_payments,err := os.Open(payment_adress)
+	if err != nil{
+		log.Print(err)
+		return err
+	}
+	defer func(){
+		err := file_payments.Close()
+		if err != nil {
+			log.Print(err)
+			return
+		}
+	} ()
+	content_payments := make([]byte,0)
+	buff := make([]byte,4)
+	for {
+		read_payment, err := file_payments.Read(buff)
+		if err == io.EOF {
+			content_payments = append(content_payments, buff[:read_payment]...)
+			break
+		}
+		if err != nil {
+			log.Print(err)
+			return err
+		}
+		content_payments = append(content_payments, buff[:read_payment]...)
+	}
+	dataa := strings.Split(string(content_payments), "\r\n")
+	for _, payments := range dataa {
+		if len(payments)>1{
+		payment := strings.Split(payments, ";")
+		id_account, err := strconv.ParseInt(payment[1],10,64)
+		if err != nil {
+			log.Print(err)
+		}
+		amount,err := strconv.ParseInt(payment[2],10,64)
+		if err != nil {
+			log.Print(err)
+		}
+		paymentt := &types.Payment{
+			ID: payment[0],
+			AccountID: id_account,
+			Amount: types.Money(amount),
+			Category: types.PaymentCategory(payment[3]),
+			Status: types.PaymentStatus(payment[4]),
+		}
+		s.payments = append(s.payments, paymentt)
+		}
+	}
+
+
+	//favorites
+	favorite_adress:=dir+"/favorites.dump"
+	file_favorites,err := os.Open(favorite_adress)
+	if err == nil{
+
+	defer func(){
+		err := file_favorites.Close()
+		if err != nil {
+			log.Print(err)
+			return
+		}
+	} ()
+	content_favorites := make([]byte,0)
+	bufff := make([]byte,4)
+	for {
+		read_favorite, err := file_favorites.Read(bufff)
+		if err == io.EOF {
+			content_favorites = append(content_favorites, bufff[:read_favorite]...)
+			break
+		}
+		if err != nil {
+			log.Print(err)
+			return err
+		}
+		content_favorites = append(content_favorites, bufff[:read_favorite]...)
+	}
+	dataaa := strings.Split(string(content_favorites), "\r\n")
+	for _, favorites := range dataaa {
+		if len(favorites)>1{
+		favorite := strings.Split(favorites, ";")
+		id_account, err := strconv.ParseInt(favorite[1],10,64)
+		if err != nil {
+			log.Print(err)
+		}
+		amount,err := strconv.ParseInt(favorite[3],10,64)
+		if err != nil {
+			log.Print(err)
+		}
+		favoritee := &types.Favorite{
+			ID: favorite[0],
+			AccountID: id_account,
+			Name: favorite[2],
+			Amount: types.Money(amount),
+			Category: types.PaymentCategory(favorite[4]),
+		}
+		s.favorites = append(s.favorites,favoritee)
+		}
+	}
+	}
+	return nil
 }
