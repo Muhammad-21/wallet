@@ -1,9 +1,10 @@
 package wallet
 
 import (
-	"github.com/Muhammad-21/wallet/pkg/types"
 	"fmt"
 	"testing"
+
+	"github.com/Muhammad-21/wallet/pkg/types"
 )
 
 type testService struct {
@@ -191,3 +192,124 @@ func TestService_PayFromFavorite_ok(t *testing.T) {
 	}
 	
 }
+
+
+
+func TestService_Import_success_user(t *testing.T) {
+	var svc Service
+
+	err := svc.ImportFromFile("export.txt")
+
+	if err != nil {
+		t.Errorf("method ExportToFile returned not nil error, err => %v", err)
+	}
+
+}
+
+
+func TestService_Export_success(t *testing.T) {
+	svc := Service{}
+
+	svc.RegisterAccount("+992000000001")
+	svc.RegisterAccount("+992000000002")
+	svc.RegisterAccount("+992000000003")
+	svc.RegisterAccount("+992000000004")
+
+	err := svc.Export("data")
+	if err != nil {
+		t.Errorf("method ExportToFile returned not nil error, err => %v", err)
+	}
+
+	err = svc.Import("data")
+	if err != nil {
+		t.Errorf("method ExportToFile returned not nil error, err => %v", err)
+	}
+}
+
+func TestService_ExportHistory_success_user(t *testing.T) {
+	svc := Service{}
+
+	acc, err := svc.RegisterAccount("+992000000001")
+
+	if err != nil {
+		t.Errorf("method RegisterAccount returned not nil error, account => %v", acc)
+	}
+
+	err = svc.Deposit(acc.ID, 100_00)
+	if err != nil {
+		t.Errorf("method Deposit returned not nil error, error => %v", err)
+	}
+
+	_, err = svc.Pay(acc.ID, 1, "Cafe")
+	if err != nil {
+		t.Errorf("method Pay returned not nil error, err => %v", err)
+	}
+	_, err = svc.Pay(acc.ID, 2, "Auto")
+	if err != nil {
+		t.Errorf("method Pay returned not nil error, err => %v", err)
+	}
+	_, err = svc.Pay(acc.ID, 3, "MarketShop")
+	if err != nil {
+		t.Errorf("method Pay returned not nil error, err => %v", err)
+	}
+	
+
+	payments, err := svc.ExportAccountHistory(acc.ID)
+	if err != nil {
+		t.Errorf("method ExportAccountHistory returned not nil error, err => %v", err)
+	}
+
+	err = svc.HistoryToFiles(payments, "../../data", 2)
+	if err != nil {
+		t.Errorf("method HistoryToFiles returned not nil error, err => %v", err)
+	}
+}
+
+
+func BenchmarkSumPayments(b *testing.B) {
+	// svc:=&Service{}
+	var svc Service
+	account, err := svc.RegisterAccount("+992927777777")
+	if err != nil {
+		b.Errorf("account => %v",account)
+	}
+	err = svc.Deposit(account.ID, 100_00)
+	if err != nil {
+		b.Errorf("error => %v", err)
+	}
+	want:=types.Money(55)
+	for i := types.Money(1); i <= 10; i++ {
+		_, err := svc.Pay(account.ID, i, "aa")
+		if  err != nil {
+			b.Errorf("error => %v", err)
+		}
+	}
+	got:=svc.SumPayments(5)
+	if want != got{
+		b.Errorf("want => %v got => %v", want, got)
+	}
+}
+
+// func BenchmarkFilterPayments(b *testing.B) {
+// 	// svc:=&Service{}
+// 	var svc Service
+// 	account, err := svc.RegisterAccount("+992927777777")
+// 	if err != nil {
+// 		b.Errorf("account => %v",account)
+// 	}
+// 	err = svc.Deposit(account.ID, 100_00)
+// 	if err != nil {
+// 		b.Errorf("error => %v", err)
+// 	}
+// 	//want:=types.Money(55)
+// 	for i := types.Money(1); i <= 10; i++ {
+// 		_, err := svc.Pay(account.ID, i, "aa")
+// 		if  err != nil {
+// 			b.Errorf("error => %v", err)
+// 		}
+// 	}
+// 	got,err:=svc.FilterPayments(1,5)
+// 	if err != nil{
+// 		b.Errorf("got => %v",got)
+// 	}
+// }
