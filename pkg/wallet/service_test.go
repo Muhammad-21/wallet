@@ -2,6 +2,7 @@ package wallet
 
 import (
 	"fmt"
+	"log"
 	"testing"
 
 	"github.com/Muhammad-21/wallet/pkg/types"
@@ -290,26 +291,29 @@ func BenchmarkSumPayments(b *testing.B) {
 	}
 }
 
-// func BenchmarkFilterPayments(b *testing.B) {
-// 	// svc:=&Service{}
-// 	var svc Service
-// 	account, err := svc.RegisterAccount("+992927777777")
-// 	if err != nil {
-// 		b.Errorf("account => %v",account)
-// 	}
-// 	err = svc.Deposit(account.ID, 100_00)
-// 	if err != nil {
-// 		b.Errorf("error => %v", err)
-// 	}
-// 	//want:=types.Money(55)
-// 	for i := types.Money(1); i <= 10; i++ {
-// 		_, err := svc.Pay(account.ID, i, "aa")
-// 		if  err != nil {
-// 			b.Errorf("error => %v", err)
-// 		}
-// 	}
-// 	got,err:=svc.FilterPayments(1,5)
-// 	if err != nil{
-// 		b.Errorf("got => %v",got)
-// 	}
-// }
+
+func BenchmarkSumPaymentsWithProgress(b *testing.B) {
+	// svc:=&Service{}
+	var svc Service
+	account, err := svc.RegisterAccount("+992927777777")
+	if err != nil {
+		b.Errorf("account => %v",account)
+	}
+	err = svc.Deposit(account.ID, 100_000000000000)
+	if err != nil {
+		b.Errorf("error => %v", err)
+	}
+	//want:=types.Money(55)
+	for i := types.Money(1); i <= 100_000; i++ {
+		_, err := svc.Pay(account.ID, i, "aa")
+		if  err != nil {
+			b.Errorf("error => %v", err)
+		}
+	}
+	ch:=svc.SumPaymentsWithProgress()
+	s, got := <-ch
+	if  !got {
+		b.Errorf("got => %v", got)
+	}
+	log.Println(s)
+}

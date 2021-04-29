@@ -761,3 +761,54 @@ func (s *Service) FilterPaymentsByFn(filter func(payment types.Payment) bool, go
 		}
 		return result,nil
 }
+
+
+func (s *Service) SumPaymentsWithProgress() <-chan types.Progress{
+	wg:= sync.WaitGroup{}
+	ch := make(chan types.Progress)
+	//defer close(ch)
+	n:=100_000
+	i:=0
+	goroutines := int(len(s.payments)/n)
+	if goroutines < 1 {
+		goroutines = 1
+		n=len(s.payments)
+	}
+	if len(s.payments) >1 {
+	for i=0; i<=goroutines-1; i++{
+		wg.Add(1)
+		go func(ch chan <- types.Progress,number int){
+			var sum types.Money = 0 
+			defer wg.Done()
+			payments:= s.payments[n*number:n*(number+1)]
+			for _, payment:=range payments{
+				sum+=payment.Amount
+			}
+			ch<-types.Progress{
+				Part: len(s.payments),
+				Result: sum,
+			}
+		}(ch,i)
+	}
+	}
+	// if len(s.payments) >1 {
+	wg.Add(1)
+	go func (ch chan <- types.Progress)  {
+		var sum types.Money = 0
+			defer wg.Done()
+			payments:= s.payments[n*i:]
+			for _, payment:=range payments{
+				sum+=payment.Amount
+			}
+			ch<-types.Progress{
+				Part: len(s.payments),
+				Result: sum,
+			}
+	}(ch)
+	// }	
+	go func(){
+		defer close(ch)
+		wg.Wait()
+	}()
+	return ch
+}
